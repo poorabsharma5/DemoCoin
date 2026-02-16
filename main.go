@@ -829,7 +829,8 @@ func main() {
 	// If empty, init genesis
 	if len(Blockchain) == 0 {
 		go func() {
-			t := time.Now()
+			// Fixed Genesis Timestamp for cross-node compatibility
+			genesisTime := "2024-01-01 00:00:00 +0000 UTC"
 
 			// Simulation: Hardcode stakes for Node A (8000) and Node B (8001)
 			genKey := func(portStr string) (string, ed25519.PublicKey) {
@@ -839,7 +840,7 @@ func main() {
 				return PubKeyToAddress(pub), pub
 			}
 
-			addrA, _ := genKey("8000")
+			addrA, pubA := genKey("8000") // A is the fixed Genesis Validator
 			addrB, _ := genKey("8001")
 
 			State[addrA] = &Account{Balance: 1000000, Nonce: 0, Staked: 100}
@@ -866,10 +867,10 @@ func main() {
 
 			genesisBlock := Block{
 				Index:              0,
-				Timestamp:          t.String(),
+				Timestamp:          genesisTime,
 				Transactions:       []Transaction{},
 				Validator:          addrA,
-				ValidatorPublicKey: NodePublicKey, // If running as A (8000), this is A's key.
+				ValidatorPublicKey: pubA, // Use A's key regardless of who starts first
 				MerkleRoot:         "",
 				StateRoot:          genesisStateRoot,
 				Hash:               "",
