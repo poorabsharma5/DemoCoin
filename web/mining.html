@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DemoCoin Mining</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <nav>
+            <a href="/">Dashboard</a>
+            <a href="/mining.html" class="active">Mining</a>
+        </nav>
+
+        <h1>DemoCoin Mining Center</h1>
+
+        <div class="card">
+            <h3>Validator Status</h3>
+            <p><strong>My Address:</strong> <span id="address" class="mono-small">Loading...</span></p>
+            <p><strong>Current Stake:</strong> <span id="stake">0</span> DemoCoins</p>
+            <p><strong>Is Validator?</strong> <span id="isValidator" class="badge">Checking...</span></p>
+        </div>
+
+        <div class="card">
+            <h3>Consensus Loop</h3>
+            <p>Automatically mine blocks every 10 seconds (if proposer).</p>
+            <div class="toggle-container">
+                <button id="startMiningBtn" class="btn-green">Enable Mining</button>
+                <button id="stopMiningBtn" class="btn-red" style="display:none;">Disable Mining</button>
+            </div>
+            <p id="miningStatus" class="status-text">Status: Stopped</p>
+        </div>
+
+        <div class="card">
+            <h3>Stake DemoCoins</h3>
+            <p>Become a validator by staking DemoCoins.</p>
+            <form id="stakeForm">
+                <input type="number" id="stakeAmount" placeholder="Amount (e.g. 100)" required min="1">
+                <button type="submit">Stake</button>
+            </form>
+            <div id="stakeResult"></div>
+        </div>
+    </div>
+
+    <script>
+        let myAddress = "";
+        let isMining = false; // Simple local state, ideally fetch from server
+
+        async function fetchJSON(url) {
+            const res = await fetch(url);
+            return res.json();
+        }
+
+        async function init() {
+            const info = await fetchJSON('/node/info');
+            myAddress = info.address;
+            document.getElementById('address').innerText = myAddress;
+
+            updateStats();
+            setInterval(updateStats, 5000);
+        }
+
+        async function updateStats() {
+            if (!myAddress) return;
+
+            // Check Stake
+            try {
+                const bal = await fetchJSON(`/balance/${myAddress}`);
+                const staked = (bal.Staked !== undefined) ? bal.Staked : 0;
+                document.getElementById('stake').innerText = staked;
+
+                const isVal = staked > 0;
+                const badge = document.getElementById('isValidator');
+                badge.innerText = isVal ? "YES" : "NO";
+                badge.className = isVal ? "badge badge-green" : "badge badge-gray";
+            } catch (e) { }
+        }
+
+        document.getElementById('startMiningBtn').addEventListener('click', async () => {
+            await fetch('/consensus/start', { method: 'POST' });
+            isMining = true;
+            updateUI();
+        });
+
+        document.getElementById('stopMiningBtn').addEventListener('click', async () => {
+            await fetch('/consensus/stop', { method: 'POST' });
+            isMining = false;
+            updateUI();
+        });
+
+        function updateUI() {
+            document.getElementById('startMiningBtn').style.display = isMining ? 'none' : 'inline-block';
+            document.getElementById('stopMiningBtn').style.display = isMining ? 'inline-block' : 'none';
+            document.getElementById('miningStatus').innerText = isMining ? "Status: RUNNING (Every 10s)" : "Status: STOPPED";
+        }
+
+        document.getElementById('stakeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const amount = parseInt(document.getElementById('stakeAmount').value);
+            try {
+                await fetch('/stake', {
+                    method: 'POST',
+                    body: JSON.stringify({ Amount: amount })
+                });
+                document.getElementById('stakeResult').innerText = "Staking Tx Sent!";
+                setTimeout(updateStats, 2000);
+            } catch (e) {
+                document.getElementById('stakeResult').innerText = "Error Staking";
+            }
+        });
+
+        init();
+        setInterval(updateStats, 2000);
+    </script>
+</body>
+
+</html>

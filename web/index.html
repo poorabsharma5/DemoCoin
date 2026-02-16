@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DemoCoin Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <nav>
+            <a href="/" class="active">Dashboard</a>
+            <a href="/mining.html">Mining</a>
+        </nav>
+
+        <h1>DemoCoin Wallet</h1>
+
+        <div class="card">
+            <h3>Identity</h3>
+            <p><strong>Address:</strong> <span id="address" class="mono">Loading...</span></p>
+            <p><strong>Balance:</strong> <span id="balance">0</span> DemoCoins</p>
+            <p><strong>Public Key:</strong> <span id="pubkey" class="mono-small">Loading...</span></p>
+        </div>
+
+        <div class="card">
+            <h3>Send DemoCoins</h3>
+            <form id="sendForm">
+                <input type="text" id="recipient" placeholder="Recipient Address" required>
+                <input type="number" id="amount" placeholder="Amount" required min="1">
+                <button type="submit">Send Transaction</button>
+            </form>
+            <div id="txResult"></div>
+        </div>
+
+        <!-- Confirmation Modal -->
+        <div id="confirmModal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <h3>Confirm Transaction</h3>
+                <p><strong>To:</strong> <span id="confirmTo" class="mono-small"></span></p>
+                <p><strong>Amount:</strong> <span id="confirmAmount"></span> DemoCoins</p>
+                <p><strong>Fee:</strong> 1 DemoCoin</p>
+                <hr>
+                <p><strong>Total Deduction:</strong> <span id="confirmTotal"></span> DemoCoins</p>
+                <div class="modal-actions">
+                    <button id="cancelBtn" class="btn-red">Cancel</button>
+                    <button id="confirmBtn" class="btn-green">Confirm & Send</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-row">
+            <div class="card stat">
+                <div class="stat-value" id="height">0</div>
+                <div class="stat-label">Block Height</div>
+            </div>
+            <div class="card stat">
+                <div class="stat-value" id="peers">0</div>
+                <div class="stat-label">Peers</div>
+            </div>
+            <div class="card stat">
+                <div class="stat-value" id="mempool">0</div>
+                <div class="stat-label">Pending Txs</div>
+            </div>
+        </div>
+
+        <h2>Latest Blocks</h2>
+        <div class="card">
+            <table id="blocksTable">
+                <thead>
+                    <tr>
+                        <th>Height</th>
+                        <th>Hash</th>
+                        <th>Validator</th>
+                        <th>Txs</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let myAddress = "";
+        let pendingTx = null;
+
+        async function fetchJSON(url) {
+            const res = await fetch(url);
+            return res.json();
+        }
+
+        async function init() {
+            try {
+                const info = await fetchJSON('/node/info');
+                myAddress = info.address;
+                document.getElementById('address').innerText = myAddress;
+                document.getElementById('pubkey').innerText = info.publicKey;
+
+                updateDashboard();
+                setInterval(updateDashboard, 2000);
+            } catch (e) {
+                console.error("Failed to init:", e);
+                document.getElementById('address').innerText = "Error connecting to node";
+            }
+        }
+
+        async function updateDashboard() {
+            if (!myAddress) return;
+
+            // Balance
+            try {
+                const bal = await fetchJSON(`/balance/${myAddress}`);
+                document.getElementById('balance').innerText = (bal.Balance !== undefined) ? bal.Balance : 0;
+            } catch (e) { document.getElementById('balance').innerText = 0; }
+
+            // Stats
+            const stats = await fetchJSON('/stats');
+            document.getElementById('height').innerText = stats.height;
+            document.getElementById('peers').innerText = stats.peers;
+            document.getElementById('mempool').innerText = stats.mempoolCount;
+
+            // Blocks
+            const blocks = await fetchJSON('/api/blocks');
+            const tbody = document.querySelector('#blocksTable tbody');
+            tbody.innerHTML = '';
+            blocks.slice(-5).reverse().forEach(b => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${b.Index}</td>
+                    <td class="mono-small">${b.Hash.substring(0, 16)}...</td>
+                    <td class="mono-small">${b.Validator ? b.Validator.substring(0, 16) + '...' : 'Genesis'}</td>
+                    <td>${b.Transactions ? b.Transactions.length : 0}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Show Modal
+        document.getElementById('sendForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const to = document.getElementById('recipient').value;
+            const amount = parseInt(document.getElementById('amount').value);
+
+            pendingTx = { To: to, Amount: amount };
+
+            document.getElementById('confirmTo').innerText = to;
+            document.getElementById('confirmAmount').innerText = amount;
+            document.getElementById('confirmTotal').innerText = amount + 1; // +1 Fee
+
+            document.getElementById('confirmModal').style.display = 'flex';
+        });
+
+        // Cancel
+        document.getElementById('cancelBtn').addEventListener('click', () => {
+            document.getElementById('confirmModal').style.display = 'none';
+            pendingTx = null;
+        });
+
+        // Confirm
+        document.getElementById('confirmBtn').addEventListener('click', async () => {
+            if (!pendingTx) return;
+            document.getElementById('confirmModal').style.display = 'none';
+
+            try {
+                const res = await fetch('/send', {
+                    method: 'POST',
+                    body: JSON.stringify(pendingTx)
+                });
+                const data = await res.json();
+                document.getElementById('txResult').innerHTML = `<p style="color: green">Tx Sent! ID: ${data.Type}</p>`;
+                setTimeout(updateDashboard, 1000);
+                document.getElementById('sendForm').reset();
+            } catch (err) {
+                document.getElementById('txResult').innerHTML = `<p style="color: red">Failed: ${err}</p>`;
+            }
+            pendingTx = null;
+        });
+
+        init();
+    </script>
+</body>
+
+</html>

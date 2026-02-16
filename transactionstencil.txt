@@ -1,0 +1,10 @@
+{
+  "Type": "TX",
+  "PublicKey": "Base64EncodedPublicKey",
+  "Signature": "Base64EncodedSignature",
+  "To": "bob",
+  "Amount": 50,
+  "Fee": 5,
+  "Nonce": 0,
+  "Data": "Payment for services"
+}

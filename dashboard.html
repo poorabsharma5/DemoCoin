@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockchain Admin Dashboard</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #e0e0e0;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Blockchain Admin Dashboard</h1>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="height">0</div>
+                <div class="stat-label">Block Height</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="supply">0</div>
+                <div class="stat-label">Total Supply</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="mempool">0</div>
+                <div class="stat-label">Mempool Transactions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="peers">0</div>
+                <div class="stat-label">Peers</div>
+            </div>
+        </div>
+
+        <h2>Validators</h2>
+        <ul id="validators"></ul>
+
+        <h2>Latest Blocks</h2>
+        <table id="blocks-table">
+            <thead>
+                <tr>
+                    <th>Index</th>
+                    <th>Hash</th>
+                    <th>Validator</th>
+                    <th>Txs</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        async function updateStats() {
+            try {
+                const res = await fetch('/stats');
+                const data = await res.json();
+                document.getElementById('height').innerText = data.height;
+                document.getElementById('supply').innerText = data.totalSupply;
+                document.getElementById('mempool').innerText = data.mempoolCount;
+                document.getElementById('peers').innerText = data.peers;
+
+                const valList = document.getElementById('validators');
+                valList.innerHTML = '';
+                if (data.validators) {
+                    data.validators.forEach(v => {
+                        const li = document.createElement('li');
+                        li.innerText = `${v.Address} (Stake: ${v.Stake})`;
+                        valList.appendChild(li);
+                    });
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function updateBlocks() {
+            try {
+                const res = await fetch('/');
+                const blocks = await res.json();
+                const tbody = document.querySelector('#blocks-table tbody');
+                tbody.innerHTML = '';
+                // Show last 10
+                blocks.slice(-10).reverse().forEach(b => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${b.Index}</td>
+                        <td>${b.Hash.substring(0, 10)}...</td>
+                        <td>${b.Validator ? b.Validator.substring(0, 10) + '...' : 'Genesis'}</td>
+                        <td>${b.Transactions ? b.Transactions.length : 0}</td>
+                        <td>${b.Timestamp}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        setInterval(() => {
+            updateStats();
+            updateBlocks();
+        }, 2000);
+        updateStats();
+        updateBlocks();
+    </script>
+</body>
+
+</html>

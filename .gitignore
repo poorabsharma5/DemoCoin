@@ -1,0 +1,28 @@
+# Binaries
+blockchain
+main
+myblockchain
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Databases
+*.db
+*.db-journal
+
+# Keys & Secrets
+.env
+node.key
+node_priv.key
+node_pub.key
+
+# Logs
+*.log
+
+# Dependencies
+vendor/
+
+# OS files
+.DS_Store
