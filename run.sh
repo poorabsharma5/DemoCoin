@@ -10,5 +10,4 @@ go build -o blockchain
 echo "Starting Node on Port 8000..."
 export ADDR=8000
 export P2P_PORT=6000
-export SINGLE_NODE=true
 ./blockchain

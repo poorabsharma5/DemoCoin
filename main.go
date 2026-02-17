@@ -252,7 +252,7 @@ func run() error {
 	mux := makeMuxRouter()
 	httpAddr := os.Getenv("ADDR")
 	if httpAddr == "" {
-		httpAddr = "8080"
+		httpAddr = "8000"
 	}
 	log.Println("Listening on ", httpAddr)
 	s := &http.Server{
@@ -844,9 +844,8 @@ func main() {
 			addrB, _ := genKey("8001")
 
 			State[addrA] = &Account{Balance: 1000000, Nonce: 0, Staked: 100}
-			if os.Getenv("SINGLE_NODE") != "true" {
-				State[addrB] = &Account{Balance: 1000000, Nonce: 0, Staked: 100}
-			}
+			// Pre-fund Node B as well so a second user can mine immediately
+			State[addrB] = &Account{Balance: 1000000, Nonce: 0, Staked: 100}
 
 			genesisStateRoot := ComputeStateRoot(State)
 
